@@ -16,15 +16,62 @@ WEB_DIRECTORY = "./web"
 __all__ = ["NODE_CLASS_MAPPINGS", "NODE_DISPLAY_NAME_MAPPINGS", "WEB_DIRECTORY"]
 
 
-def _init_discord_rpc():
-    """Initialize the Discord RPC system."""
+def _ensure_pypresence():
+    """Make sure the ``pypresence`` dependency is importable.
+
+    ComfyUI does not auto-install custom-node requirements on its own (only
+    ComfyUI-Manager does, at install time).  So users who install this
+    extension manually - or who rebuild their virtual environment - end up
+    without ``pypresence``.  To keep the extension working in every install
+    scenario we install it automatically into the *current* interpreter the
+    first time it is missing.
+
+    Returns True if pypresence is importable after this call, else False.
+    """
     try:
         import pypresence  # noqa: F401
+        return True
+    except ImportError:
+        pass
+
+    import subprocess
+    import sys
+
+    logger.info(
+        "[Discord RPC] pypresence not found - installing automatically..."
+    )
+    try:
+        subprocess.check_call(
+            [sys.executable, "-m", "pip", "install", "pypresence>=4.3.0"]
+        )
+    except Exception as e:
+        logger.error(
+            "[Discord RPC] Automatic install of pypresence failed (%s). "
+            "Please install it manually with: pip install pypresence",
+            e,
+        )
+        return False
+
+    # Refresh import caches so the freshly installed package is visible
+    import importlib
+
+    importlib.invalidate_caches()
+    try:
+        import pypresence  # noqa: F401
+
+        logger.info("[Discord RPC] pypresence installed successfully.")
+        return True
     except ImportError:
         logger.error(
-            "[Discord RPC] pypresence is not installed. "
-            "Install it with: pip install pypresence"
+            "[Discord RPC] pypresence was installed but could not be "
+            "imported. Please restart ComfyUI."
         )
+        return False
+
+
+def _init_discord_rpc():
+    """Initialize the Discord RPC system."""
+    if not _ensure_pypresence():
         return
 
     from .config import load_config, get_config, set_rpc_manager, register_routes

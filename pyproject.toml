@@ -1,7 +1,7 @@
 [project]
 name = "comfyui-discord-rpc"
 description = "Discord Rich Presence integration for ComfyUI - shows generation status in Discord"
-version = "1.0.2"
+version = "1.0.3"
 license = {text = "MIT"}
 dependencies = ["pypresence>=4.3.0"]
 
